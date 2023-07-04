@@ -9,6 +9,10 @@ NavigationController::NavigationController(void) : p_nh_("~") {
 	this->subevt_  = this->nh_.subscribe("/events/bus", 1, 
 							&NavigationController::on_received_neuroevent, this);
 	this->pubctrl_ = this->nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+	
+	// Bind dynamic reconfigure callback
+	this->recfg_callback_type_ = boost::bind(&NavigationController::on_request_reconfigure, this, _1, _2);
+	this->recfg_srv_.setCallback(this->recfg_callback_type_);
 
 
 	this->has_new_ctrl_ = false;
@@ -25,7 +29,37 @@ bool NavigationController::configure(void) {
 	this->input_max_ = 1.0f;	
 	this->input_min_ = 0.0f;	
 
+	// Getting classes
+	if(this->p_nh_.getParam("classes", this->classes_) == false) {
+		ROS_ERROR("Parameter 'classes' is mandatory");
+		return false;
+	}	
+	
+	// Getting thresholds
+	if(this->p_nh_.getParam("thresholds", this->thresholds_) == false) {
+		ROS_ERROR("Parameter 'thresholds' is mandatory");
+		return false;
+	}
+	
+	this->thresholds_.at(1) = 1.0f - this->thresholds_.at(1);
+
+	ros::param::param("~linear_strength",  this->linear_strength_, 1.0f);
+	ros::param::param("~angular_strength", this->angular_strength_, 1.0f);
+	ros::param::param("~is_discrete", this->is_discrete_, false);
+
 	return true;
+}
+
+bool NavigationController::has_class(int refclass, const std::vector<int>& classes) {
+
+	bool retcod = false;
+	auto it = std::find(classes.begin(), classes.end(), refclass);
+
+	if(it != classes.end())
+		retcod = true;
+
+	return retcod;
+
 }
 
 void NavigationController::run(void) {
@@ -46,14 +80,51 @@ void NavigationController::run(void) {
 
 }
 
+int NavigationController::get_class_index(int refclass, const std::vector<int>& classes) {
+
+	int index = -1;
+	auto it = std::find(classes.begin(), classes.end(), refclass);
+
+	if(it != classes.end())
+		index = it - classes.begin();
+
+	return index;
+}
+
 void NavigationController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput& msg) {
-	
+
+	int refclass = this->classes_.at(0);
+	bool is_class_found = true;
 	float ctrl, input;
-	input = msg.softpredict.data.at(0);
-	ctrl = this->input2control(input);
-	this->ctrl_.linear.x  = 0.5f * this->gaussian(ctrl, 0.0, 0.5);
-	this->ctrl_.angular.z = 0.5f * ctrl;
-	this->has_new_ctrl_ = true;
+	std::vector<int> msgclasses = msg.decoder.classes;
+	
+	// First: check that the incoming classes are the ones provided
+	for(auto it = msgclasses.begin(); it != msgclasses.end(); ++it)	
+		is_class_found = is_class_found && this->has_class(*it, msgclasses);
+
+	if(is_class_found == false) {
+		this->has_new_ctrl_ = false;
+		ROS_WARN_THROTTLE(5.0f, "The incoming neurooutput message does not have the provided classes");
+		return;
+	}
+
+	if(this->get_class_index(refclass, msgclasses) == -1) {
+		this->has_new_ctrl_ = false;
+		ROS_WARN_THROTTLE(5.0f, "The incoming neurooutput message does not have the provided classes");
+		return;
+	} else {
+		input = msg.softpredict.data.at(0);
+
+		if(this->is_discrete_ == true) {
+			if(input < this->thresholds_.at(0) && input > this->thresholds_.at(1))
+				input = 0.5f;
+		}
+
+		ctrl = this->input2control(input);
+		this->ctrl_.linear.x  = this->linear_strength_ * this->gaussian(ctrl, 0.0, 0.5);
+		this->ctrl_.angular.z = this->angular_strength_ * ctrl;
+		this->has_new_ctrl_ = true;
+	}
 
 
 }
@@ -79,5 +150,26 @@ float NavigationController::gaussian(float x, float mu, float sigma) {
 
 	return exp( - std::pow(x - mu, 2) / (2 * pow(sigma, 2) ) );
 }
+
+
+void NavigationController::on_request_reconfigure(rosneuro_config_cybathlon_controller &config, uint32_t level) {
+
+	if( std::fabs(config.linear_strength - this->linear_strength_) > 0.00001) {
+		this->linear_strength_ = config.linear_strength;
+		ROS_WARN("Changed linear strength to: %f", this->linear_strength_);
+	}
+	
+	if( std::fabs(config.angular_strength - this->angular_strength_) > 0.00001) {
+		this->angular_strength_ = config.angular_strength;
+		ROS_WARN("Changed angular strength to: %f", this->angular_strength_);
+	}
+
+	if(config.is_discrete != this->is_discrete_) {
+		this->is_discrete_ = config.is_discrete;
+		ROS_WARN("Changed the control modality to %s", this->is_discrete_ ? "discrete" : "continuous");
+	}
+}
+
+
 
 }

@@ -9,7 +9,12 @@ find_package(catkin REQUIRED COMPONENTS
 			 std_msgs
 			 geometry_msgs
 			 rosneuro_msgs
+			 dynamic_reconfigure
 			 )
+
+generate_dynamic_reconfigure_options(
+	cfg/NavigationController.cfg
+)
 
 catkin_package(
   INCLUDE_DIRS 
@@ -43,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}
 
 add_dependencies(${PROJECT_NAME} 
 				 ${catkin_EXPORTED_TARGETS}
+				 ${PROJECT_NAME}_gencfg
 )
 
 #################
