@@ -45,7 +45,9 @@ class NavigationController {
 		ros::Publisher	pubctrl_;
 		
 		std::vector<int> classes_;
-		std::vector<float> thresholds_;
+		//std::vector<float> thresholds_;
+
+		const int cmdmask_ = 6000;
 
 		float linear_strength_;
 		float angular_strength_;

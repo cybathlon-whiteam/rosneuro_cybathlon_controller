@@ -35,13 +35,13 @@ bool NavigationController::configure(void) {
 		return false;
 	}	
 	
-	// Getting thresholds
-	if(this->p_nh_.getParam("thresholds", this->thresholds_) == false) {
-		ROS_ERROR("Parameter 'thresholds' is mandatory");
-		return false;
-	}
-	
-	this->thresholds_.at(1) = 1.0f - this->thresholds_.at(1);
+	//// Getting thresholds
+	//if(this->p_nh_.getParam("thresholds", this->thresholds_) == false) {
+	//	ROS_ERROR("Parameter 'thresholds' is mandatory");
+	//	return false;
+	//}
+	//
+	//this->thresholds_.at(1) = 1.0f - this->thresholds_.at(1);
 
 	ros::param::param("~linear_strength",  this->linear_strength_, 1.0f);
 	ros::param::param("~angular_strength", this->angular_strength_, 1.0f);
@@ -94,42 +94,62 @@ int NavigationController::get_class_index(int refclass, const std::vector<int>& 
 void NavigationController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput& msg) {
 
 	int refclass = this->classes_.at(0);
+	int refclassid;
 	bool is_class_found = true;
 	float ctrl, input;
 	std::vector<int> msgclasses = msg.decoder.classes;
 	
+
+	if(this->is_discrete_ == true)
+		return;
+
 	// First: check that the incoming classes are the ones provided
 	for(auto it = msgclasses.begin(); it != msgclasses.end(); ++it)	
-		is_class_found = is_class_found && this->has_class(*it, msgclasses);
+		is_class_found = is_class_found && this->has_class(*it, this->classes_);
 
 	if(is_class_found == false) {
 		this->has_new_ctrl_ = false;
 		ROS_WARN_THROTTLE(5.0f, "The incoming neurooutput message does not have the provided classes");
 		return;
 	}
+	
+	refclassid = this->get_class_index(refclass, msgclasses);
 
-	if(this->get_class_index(refclass, msgclasses) == -1) {
+	if(refclassid == -1) {
 		this->has_new_ctrl_ = false;
 		ROS_WARN_THROTTLE(5.0f, "The incoming neurooutput message does not have the provided classes");
 		return;
 	} else {
-		input = msg.softpredict.data.at(0);
-
-		if(this->is_discrete_ == true) {
-			if(input < this->thresholds_.at(0) && input > this->thresholds_.at(1))
-				input = 0.5f;
-		}
-
+		input = msg.softpredict.data.at(refclassid);
 		ctrl = this->input2control(input);
 		this->ctrl_.linear.x  = this->linear_strength_ * this->gaussian(ctrl, 0.0, 0.5);
 		this->ctrl_.angular.z = this->angular_strength_ * ctrl;
 		this->has_new_ctrl_ = true;
 	}
 
-
 }
 
 void NavigationController::on_received_neuroevent(const rosneuro_msgs::NeuroEvent& msg) {
+
+	int event = msg.event;
+	int classevt = event - this->cmdmask_;
+	int refclassid;
+	float input, ctrl;
+
+	if(this->is_discrete_ == false)
+		return;
+
+	if(this->has_class(classevt, this->classes_) == false)
+		return;
+
+	refclassid = this->get_class_index(classevt, this->classes_);
+
+	input = refclassid == 0 ? 1.0f : 0.0f;
+
+	ctrl = this->input2control(input);
+	this->ctrl_.linear.x  = this->linear_strength_ * this->gaussian(ctrl, 0.0, 0.5);
+	this->ctrl_.angular.z = this->angular_strength_ * ctrl;
+	this->has_new_ctrl_ = true;
 
 }
 
