@@ -98,6 +98,7 @@ void NavigationController::on_received_neuroprediction(const rosneuro_msgs::Neur
 	bool is_class_found = true;
 	float ctrl, input;
 	std::vector<int> msgclasses = msg.decoder.classes;
+
 	
 
 	if(this->is_discrete_ == true)
@@ -139,6 +140,17 @@ void NavigationController::on_received_neuroevent(const rosneuro_msgs::NeuroEven
 	if(this->is_discrete_ == false)
 		return;
 
+	// Manage the reset 
+	if(event == 781) {
+		input = 0.5f;
+		ctrl = this->input2control(input);
+		this->ctrl_.linear.x  = this->linear_strength_ * this->gaussian(ctrl, 0.0, 0.5);
+		this->ctrl_.angular.z = this->angular_strength_ * ctrl;
+		this->has_new_ctrl_ = true;
+		return;
+	}
+
+	// Manage class commands
 	if(this->has_class(classevt, this->classes_) == false)
 		return;
 
