@@ -159,6 +159,7 @@ void NavigationController::on_received_neuroevent(const rosneuro_msgs::NeuroEven
 	input = refclassid == 0 ? 1.0f : 0.0f;
 
 	ctrl = this->input2control(input);
+	ROS_INFO("input=%f, ctrl=%f\n", input, ctrl);
 	this->ctrl_.linear.x  = this->linear_strength_ * this->gaussian(ctrl, 0.0, 0.5);
 	this->ctrl_.angular.z = this->angular_strength_ * ctrl;
 	this->has_new_ctrl_ = true;
