@@ -22,46 +22,50 @@ class NavigationController {
 		NavigationController(void);
 		virtual ~NavigationController(void);
 
-		bool configure(void);
-		void run(void);
+		virtual bool configure(void);
+		virtual void run(void);
 
 	protected:
-		void on_received_neuroprediction(const rosneuro_msgs::NeuroOutput& msg);
+		virtual void on_received_neuroprediction(const rosneuro_msgs::NeuroOutput& msg);
 		void on_received_neuroevent(const rosneuro_msgs::NeuroEvent& msg);
 		void on_request_reconfigure(rosneuro_config_cybathlon_controller &config, uint32_t level);
 
-	private:
-		float input2control(float input);
+    virtual float input2control(float input);
+
+    bool has_new_ctrl_;
+    float angular_strength_;
+    float linear_strength_;
+    bool is_discrete_;
+
+    geometry_msgs::Twist ctrl_;
+
+    ros::NodeHandle nh_;
+    ros::NodeHandle p_nh_;
+		
 		float gaussian(float x, float mu, float sigma);
 		bool has_class(int refclass, const std::vector<int>& classes);
 		int get_class_index(int refclass, const std::vector<int>& classes);
-		
-	private:
-		ros::NodeHandle nh_;
-		ros::NodeHandle p_nh_;
 
-		ros::Subscriber subprob_;
-		ros::Subscriber subevt_;
-		ros::Publisher	pubctrl_;
+    ros::Publisher	pubctrl_;
 		
 		std::vector<int> classes_;
-		//std::vector<float> thresholds_;
+ 
+	private:
+		ros::Subscriber subprob_;
+		ros::Subscriber subevt_;
+		
+    //std::vector<float> thresholds_;
 
 		const int cmdmask_ = 6000;
 
-		float linear_strength_;
-		float angular_strength_;
-		bool is_discrete_;
 
-		geometry_msgs::Twist ctrl_;
-		bool has_new_ctrl_;
 		float ctrl_max_;
 		float ctrl_min_;
 		float input_max_;
 		float input_min_;
 		
 		dyncfg_cybathlon_controller recfg_srv_;
-  		dyncfg_cybathlon_controller::CallbackType recfg_callback_type_;
+  	dyncfg_cybathlon_controller::CallbackType recfg_callback_type_;
 
 };
 

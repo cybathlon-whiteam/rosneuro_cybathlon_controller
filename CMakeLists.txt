@@ -40,6 +40,7 @@ include_directories(include
 
 add_library(${PROJECT_NAME}	
 				src/NavigationController.cpp
+				src/AllController.cpp
 			)
 
 target_link_libraries(${PROJECT_NAME} 
