@@ -8,6 +8,12 @@ AllController::AllController(void) : NavigationController(){
   
   this->has_new_dbar_   = false;
   this->has_new_button_ = false;
+
+  // Bind dynamic reconfigure callback
+  ros::NodeHandle node_handle("~cybathlon_feedback");
+  dyncfg_feedback_cy *recfg_srv_f_ = new dyncfg_feedback_cy(node_handle);
+  this->recfg_callback_type_f_ = boost::bind(&AllController::on_request_reconfigure_f, this, _1, _2);
+  recfg_srv_f_->setCallback(this->recfg_callback_type_f_);
 }
 
 AllController::~AllController(void){
@@ -65,9 +71,9 @@ void AllController::run(void) {
 
 }
 
-std::vector<float> AllController::string2vector_converter(std::string msg){
+std::vector<double> AllController::string2vector_converter(std::string msg){
 	// If possible, always prefer std::vector to naked array
-  std::vector<float> v;
+  std::vector<double> v;
 
 	msg.replace(msg.find(", "), 2, " ");
 
@@ -76,13 +82,13 @@ std::vector<float> AllController::string2vector_converter(std::string msg){
 
   // Iterate over the istream, using >> to grab floats
   // and push_back to store them in the vector
-  std::copy(std::istream_iterator<float>(iss),
-        std::istream_iterator<float>(),
+  std::copy(std::istream_iterator<double>(iss),
+        std::istream_iterator<double>(),
         std::back_inserter(v));
 
   // Put the result on standard out
   std::copy(v.begin(), v.end(),
-        std::ostream_iterator<float>(std::cout, ", "));
+        std::ostream_iterator<double>(std::cout, ", "));
   std::cout << "\n";
   return v;
 	
@@ -219,6 +225,15 @@ void AllController::increase_bar(int index){
 	}
   this->has_new_dbar_ = true;
 }
+
+void AllController::on_request_reconfigure_f(cybathlon_feedback &config, uint32_t level) {
+	thresholds_soft_  = {config.thsl, config.thsr};
+	thresholds_hard_  = {config.thhl, config.thhr};
+	thresholds_final_ = {config.thfl, config.thfr};
+
+	ROS_INFO("lol");
+}
+
 
 
 }

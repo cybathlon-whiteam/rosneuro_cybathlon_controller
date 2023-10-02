@@ -64,7 +64,7 @@ class NavigationController {
 		float input_max_;
 		float input_min_;
 		
-		dyncfg_cybathlon_controller recfg_srv_;
+	dyncfg_cybathlon_controller recfg_srv_;
   	dyncfg_cybathlon_controller::CallbackType recfg_callback_type_;
 
 };
