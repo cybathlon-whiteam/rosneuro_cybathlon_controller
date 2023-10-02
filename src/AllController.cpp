@@ -230,8 +230,6 @@ void AllController::on_request_reconfigure_f(cybathlon_feedback &config, uint32_
 	thresholds_soft_  = {config.thsl, config.thsr};
 	thresholds_hard_  = {config.thhl, config.thhr};
 	thresholds_final_ = {config.thfl, config.thfr};
-
-	ROS_INFO("lol");
 }
 
 
