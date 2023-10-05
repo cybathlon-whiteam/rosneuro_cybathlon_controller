@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <std_srvs/Empty.h>
 #include <cmath>
 
 #include "rosneuro_cybathlon_controller/NavigationController.h"
@@ -43,6 +44,8 @@ class AllController : public NavigationController {
 
         void decrease_bars();
         void increase_bar(int bar_id);
+
+        void request_reset_integration();
         
         volatile float bar1_ = 0;
         volatile float bar2_ = 0;
@@ -58,10 +61,14 @@ class AllController : public NavigationController {
         bool has_new_dbar_   = false;
         bool has_new_button_ = false;
 
+        bool reset_on_hit    = true;
+
         int digital_key_ = -1;
 
         //dyncfg_feedback_cy               recfg_srv_f_;
 		dyncfg_feedback_cy::CallbackType recfg_callback_type_f_;
+
+        ros::ServiceClient reset_integrator_service;
 
 };
 }

@@ -14,6 +14,8 @@ AllController::AllController(void) : NavigationController(){
   dyncfg_feedback_cy *recfg_srv_f_ = new dyncfg_feedback_cy(node_handle);
   this->recfg_callback_type_f_ = boost::bind(&AllController::on_request_reconfigure_f, this, _1, _2);
   recfg_srv_f_->setCallback(this->recfg_callback_type_f_);
+
+  this->reset_integrator_service = this->nh_.serviceClient<std_srvs::Empty>("/integrator/reset");
 }
 
 AllController::~AllController(void){
@@ -31,6 +33,7 @@ bool AllController::configure(void) {
     ros::param::param("~threshold_final", this->string_thresholds_final_, tstf);
     ros::param::param("~threshold_initial", this->string_thresholds_initial_, tsti);
 
+	ros::param::param("~reset_on_hit", this->reset_on_hit, this->reset_on_hit);
 
     this->thresholds_initial_ = this->string2vector_converter(this->string_thresholds_initial_);
     this->thresholds_soft_  = this->string2vector_converter(this->string_thresholds_soft_);
@@ -101,8 +104,6 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
 	bool is_class_found = true;
 	float ctrl, input;
 	std::vector<int> msgclasses = msg.decoder.classes;
-
-
 
 	if(this->is_discrete_ == true)
 		return;
@@ -209,21 +210,30 @@ void AllController::increase_bar(int index){
 	if (index == 0) {
 		this->bar1_ += this->dbar_increment_;
 		
-		if (	bar1_ >= 1.0 ) {
-				this->bar1_ = 0.0;
-				this->digital_key_ = index;
-				this->has_new_button_ = true;
+		if ( this->bar1_ >= 1.0 ) {
+			this->bar1_ = 0.0;
+			this->digital_key_ = index;
+			this->has_new_button_ = true;
+			request_reset_integration();
 		}
 	} else {
 		this->bar2_ += this->dbar_increment_;
 		
-		if (	this->bar2_ >= 1.0 ) {
-				this->bar2_ = 0.0;
-        this->digital_key_ = index;
-				this->has_new_button_ = true;
+		if ( this->bar2_ >= 1.0 ) {
+			this->bar2_ = 0.0;
+    		this->digital_key_ = index;
+			this->has_new_button_ = true;
+			request_reset_integration();
 		}
 	}
   this->has_new_dbar_ = true;
+}
+
+void AllController::request_reset_integration(){
+	if (this->reset_on_hit) {
+		std_srvs::Empty emp;
+		this->reset_integrator_service.call(emp);	
+	}
 }
 
 void AllController::on_request_reconfigure_f(cybathlon_feedback &config, uint32_t level) {
