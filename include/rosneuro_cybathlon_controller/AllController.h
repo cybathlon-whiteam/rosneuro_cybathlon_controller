@@ -29,6 +29,7 @@ class AllController : public NavigationController {
     protected:
     	void on_received_neuroprediction(const rosneuro_msgs::NeuroOutput& msg) override;
         float input2control(float input) override;
+        float input2angular(float input);
 
         void on_request_reconfigure_f(cybathlon_feedback &config, uint32_t level);  
 

@@ -26,7 +26,7 @@ bool AllController::configure(void) {
     std::string tsts = "0.8, 0.8";
     std::string tsth = "0.9, 0.9";
     std::string tstf = "1.0, 1.0";
-    std::string tsti = "0.6, 0.6";
+    std::string tsti = "0.501, 0.501";
 
     ros::param::param("~threshold_soft",  this->string_thresholds_soft_,  tsts);
     ros::param::param("~threshold_hard",  this->string_thresholds_hard_,  tsth);
@@ -128,22 +128,19 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
 		input = msg.softpredict.data.at(refclassid);
 
     if (input < this->thresholds_hard_[0] && input > (1 - this->thresholds_hard_[1])) {
-		  ctrl = this->input2control(input);
-      if (ctrl < 0.0f)
-        ctrl = 0.0f;
-		  this->ctrl_.linear.x  = this->linear_strength_ * ctrl;
-		  this->ctrl_.angular.z = this->angular_strength_ * (1.0f - ctrl);
-		  this->has_new_ctrl_ = true;
+		ctrl = this->input2control(input);
+        if (ctrl < 0.0f)
+        	ctrl = 0.0f;
+		this->ctrl_.linear.x  = this->linear_strength_ * ctrl;
+		this->ctrl_.angular.z = this->angular_strength_ * input2angular(input);
+		this->has_new_ctrl_ = true;
     } else if (input > this->thresholds_hard_[0]) {
       this->increase_bar(0);
     } else if (input < (1 - this->thresholds_hard_[1])) {
       this->increase_bar(1);
     }
 
-    // TODO: check if the input is greater than trehsold_final and in case reset the integrator
-
-    this->decrease_bars();
-	
+    this->decrease_bars();	
   }
 
 }
@@ -156,6 +153,17 @@ float AllController::input2control(float input) {
   else if(input < (1 - this->thresholds_initial_[1]))
     input = (1.0f - input);
     return (this->thresholds_soft_[1] - input) / (this->thresholds_soft_[1] - this->thresholds_initial_[1]);
+  return 0.0f;
+}
+
+float AllController::input2angular(float input) {
+  if (input < this->thresholds_initial_[0] && input > (1 - this->thresholds_initial_[1]))
+    return 0.0f;
+  else if (input > this->thresholds_initial_[0])
+    return (this->thresholds_initial_[0] - input) / (this->thresholds_initial_[0] - this->thresholds_hard_[0]);
+  else if(input < (1 - this->thresholds_initial_[1]))
+    input = (1.0f - input);
+    return - (this->thresholds_initial_[1] - input) / (this->thresholds_initial_[1] - this->thresholds_hard_[1]);
   return 0.0f;
 }
 
