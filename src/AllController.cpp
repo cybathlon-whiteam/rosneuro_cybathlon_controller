@@ -66,6 +66,7 @@ void AllController::run(void) {
       this->pub_discrete_cmd_.publish(this->discrete_cmd_);
       this->digital_key_ = -1;
       this->has_new_button_ = false;
+	  ros::Duration(0.5).sleep();
     }
 
 		ros::spinOnce();
