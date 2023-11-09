@@ -1,5 +1,8 @@
 #include "rosneuro_cybathlon_controller/AllController.h"
 
+#define LEFT 1
+#define RIGHT 0
+
 namespace rosneuro {
 
 AllController::AllController(void) : NavigationController(){
@@ -128,17 +131,23 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
 	} else {
 		input = msg.softpredict.data.at(refclassid);
 
-    if (input < this->thresholds_hard_[0] && input > (1 - this->thresholds_hard_[1])) {
+    if (input < this->thresholds_hard_[RIGHT] && input > (1 - this->thresholds_hard_[LEFT])) { 
 		ctrl = this->input2control(input);
         if (ctrl < 0.0f)
         	ctrl = 0.0f;
 		this->ctrl_.linear.x  = this->linear_strength_ * ctrl;
 		this->ctrl_.angular.z = this->angular_strength_ * input2angular(input);
 		this->has_new_ctrl_ = true;
-    } else if (input > this->thresholds_hard_[0]) {
-      this->increase_bar(0);
-    } else if (input < (1 - this->thresholds_hard_[1])) {
-      this->increase_bar(1);
+    } else if (input > this->thresholds_hard_[RIGHT]) {
+      this->increase_bar(RIGHT);
+   		this->ctrl_.linear.x  = 0.0f;
+      this->ctrl_.angular.z = 0.0f;
+      this->has_new_ctrl_ = true;
+    } else if (input < (1 - this->thresholds_hard_[LEFT])) {
+      this->increase_bar(LEFT);
+      this->ctrl_.linear.x  = 0.0f;
+      this->ctrl_.angular.z = 0.0f; 
+      this->has_new_ctrl_ = true;
     }
 
     this->decrease_bars();	
@@ -147,24 +156,24 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
 }
 
 float AllController::input2control(float input) {
-  if (input < this->thresholds_initial_[0] && input > (1 - this->thresholds_initial_[1]))
+  if (input < this->thresholds_initial_[RIGHT] && input > (1 - this->thresholds_initial_[LEFT]))
     return 1.0f;
-  else if (input > this->thresholds_initial_[0])
-    return (this->thresholds_soft_[0] - input) / (this->thresholds_soft_[0] - this->thresholds_initial_[0]);
-  else if(input < (1 - this->thresholds_initial_[1]))
+  else if (input > this->thresholds_initial_[RIGHT])
+    return (this->thresholds_soft_[RIGHT] - input) / (this->thresholds_soft_[RIGHT] - this->thresholds_initial_[RIGHT]);
+  else if(input < (1 - this->thresholds_initial_[LEFT]))
     input = (1.0f - input);
-    return (this->thresholds_soft_[1] - input) / (this->thresholds_soft_[1] - this->thresholds_initial_[1]);
+    return (this->thresholds_soft_[LEFT] - input) / (this->thresholds_soft_[LEFT] - this->thresholds_initial_[LEFT]);
   return 0.0f;
 }
 
 float AllController::input2angular(float input) {
-  if (input < this->thresholds_initial_[0] && input > (1 - this->thresholds_initial_[1]))
+  if (input < this->thresholds_initial_[RIGHT] && input > (1 - this->thresholds_initial_[LEFT]))
     return 0.0f;
-  else if (input > this->thresholds_initial_[0])
-    return (this->thresholds_initial_[0] - input) / (this->thresholds_initial_[0] - this->thresholds_hard_[0]);
-  else if(input < (1 - this->thresholds_initial_[1]))
+  else if (input > this->thresholds_initial_[RIGHT])
+    return (this->thresholds_initial_[RIGHT] - input) / (this->thresholds_initial_[RIGHT] - this->thresholds_hard_[RIGHT]);
+  else if(input < (1 - this->thresholds_initial_[LEFT]))
     input = (1.0f - input);
-    return - (this->thresholds_initial_[1] - input) / (this->thresholds_initial_[1] - this->thresholds_hard_[1]);
+    return - (this->thresholds_initial_[LEFT] - input) / (this->thresholds_initial_[LEFT] - this->thresholds_hard_[LEFT]);
   return 0.0f;
 }
 
@@ -204,7 +213,7 @@ void AllController::set_discrete_cmd(int button_id) {
 }
 
 void AllController::decrease_bars(){
-	this->bar1_ -= this->dbar_increment_ / 4.0;
+	this->bar1_ -= this->dbar_increment_ / 4.0; // TODO: parametrize
   this->bar2_ -= this->dbar_increment_ / 4.0;
 
   if (	this->bar1_ < 0 )
@@ -223,7 +232,7 @@ void AllController::increase_bar(int index){
 			this->bar1_ = 0.0;
 			this->digital_key_ = index;
 			this->has_new_button_ = true;
-			request_reset_integration();
+			request_reset_integration(); // TODO: Set a discrete flag if to do or not
 		}
 	} else {
 		this->bar2_ += this->dbar_increment_;
@@ -232,7 +241,7 @@ void AllController::increase_bar(int index){
 			this->bar2_ = 0.0;
     		this->digital_key_ = index;
 			this->has_new_button_ = true;
-			request_reset_integration();
+			request_reset_integration(); // TODO: the same as above
 		}
 	}
   this->has_new_dbar_ = true;
