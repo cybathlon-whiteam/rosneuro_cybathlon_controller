@@ -16,6 +16,7 @@ generate_dynamic_reconfigure_options(
 	cfg/AllController.cfg
 	cfg/NavigationController.cfg
   cfg/Bars.cfg
+  cfg/Range.cfg
 )
 
 catkin_package(

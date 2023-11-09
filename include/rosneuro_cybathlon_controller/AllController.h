@@ -11,6 +11,7 @@
 
 #include "rosneuro_cybathlon_controller/AllControllerConfig.h"
 #include "rosneuro_cybathlon_controller/BarsConfig.h"
+#include "rosneuro_cybathlon_controller/RangeConfig.h"
 
 namespace rosneuro {
 
@@ -21,6 +22,9 @@ using dyncfg_feedback_cy   = dynamic_reconfigure::Server<cybathlon_feedback>;
 
 using cybathlon_feedback_bars = rosneuro_cybathlon_controller::BarsConfig;
 using dyncfg_feedback_bars    = dynamic_reconfigure::Server<cybathlon_feedback_bars>;
+
+using cybathlon_feedback_range = rosneuro_cybathlon_controller::RangeConfig;
+using dyncfg_feedback_range    = dynamic_reconfigure::Server<cybathlon_feedback_range>;
 
 class AllController : public NavigationController {
     public:
@@ -37,10 +41,13 @@ class AllController : public NavigationController {
 
         void on_request_reconfigure_f(cybathlon_feedback &config, uint32_t level);  
         void on_request_reconfigure_b(cybathlon_feedback_bars &config, uint32_t level);
+        void on_request_reconfigure_r(cybathlon_feedback_range &config, uint32_t level);
 
     private:
         std_msgs::Float32MultiArray status_bar_;
         void set_status_bar();
+
+        std::vector<double> convert_tresholds_(double offset, double width);
        
         std_msgs::UInt8MultiArray discrete_cmd_;
         void set_discrete_cmd(int button_id);
@@ -61,6 +68,8 @@ class AllController : public NavigationController {
         std::vector<double> thresholds_soft_, thresholds_hard_, thresholds_final_, thresholds_initial_;
         std::string string_thresholds_soft_, string_thresholds_hard_, string_thresholds_final_, string_thresholds_initial_;
 
+        double offset_i_;
+
         float dbar_increment_ ;
         float dbar_decrement_ ;
 
@@ -73,6 +82,7 @@ class AllController : public NavigationController {
 
 		    dyncfg_feedback_cy::CallbackType recfg_callback_type_f_;
         dyncfg_feedback_bars::CallbackType recfg_callback_type_b_;
+        dyncfg_feedback_range::CallbackType recfg_callback_type_r_;
 
         ros::ServiceClient reset_integrator_service;
 

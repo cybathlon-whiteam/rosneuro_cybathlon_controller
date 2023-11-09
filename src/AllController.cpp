@@ -13,16 +13,22 @@ AllController::AllController(void) : NavigationController(){
   this->has_new_button_ = false;
 
   // Bind dynamic reconfigure callback
-  ros::NodeHandle node_handle("~cybathlon_feedback");
+  ros::NodeHandle node_handle("~thresholds");
   dyncfg_feedback_cy *recfg_srv_f_ = new dyncfg_feedback_cy(node_handle);
   this->recfg_callback_type_f_ = boost::bind(&AllController::on_request_reconfigure_f, this, _1, _2);
   recfg_srv_f_->setCallback(this->recfg_callback_type_f_);
 
   // Bind dynamic reconfigure callback for the bars
-  ros::NodeHandle node_handle_b("~cybathlon_feedback_bars");
+  ros::NodeHandle node_handle_b("~bars_velocity");
   dyncfg_feedback_bars *recfg_srv_b_ = new dyncfg_feedback_bars(node_handle_b);
   this->recfg_callback_type_b_ = boost::bind(&AllController::on_request_reconfigure_b, this, _1, _2);
   recfg_srv_b_->setCallback(this->recfg_callback_type_b_);
+
+  // Bind dynamic reconfigure callback for the initial threshold
+  ros::NodeHandle node_handle_i("~initial_with");
+  dyncfg_feedback_range *recfg_srv_r_ = new dyncfg_feedback_range(node_handle_i);
+  this->recfg_callback_type_r_ = boost::bind(&AllController::on_request_reconfigure_r, this, _1, _2);
+  recfg_srv_r_->setCallback(this->recfg_callback_type_r_);
 
   this->reset_integrator_service = this->nh_.serviceClient<std_srvs::Empty>("/integrator/reset");
 }
@@ -34,20 +40,24 @@ bool AllController::configure(void) {
   if (NavigationController::configure()) {
     std::string tsts = "0.8, 0.8";
     std::string tsth = "0.9, 0.9";
-    std::string tstf = "1.0, 1.0";
-    std::string tsti = "0.501, 0.501";
+    //std::string tstf = "1.0, 1.0";
+    //std::string tsti = "0.5, 0.05";
+    double width_i;
 
     ros::param::param("~threshold_soft",  this->string_thresholds_soft_,  tsts);
     ros::param::param("~threshold_hard",  this->string_thresholds_hard_,  tsth);
-    ros::param::param("~threshold_final", this->string_thresholds_final_, tstf);
-    ros::param::param("~threshold_initial", this->string_thresholds_initial_, tsti);
+    //ros::param::param("~threshold_final", this->string_thresholds_final_, tstf);
+    ros::param::param("~offset_i", this->offset_i_, 0.5d);
+    ros::param::param("~width_i",  width_i,  0.01d);
+
+    this->thresholds_initial_ = this->convert_tresholds_(this->offset_i_, width_i);
 
 	  ros::param::param("~reset_on_hit", this->reset_on_hit, this->reset_on_hit);
 
-    this->thresholds_initial_ = this->string2vector_converter(this->string_thresholds_initial_);
+    //this->thresholds_initial_ = this->string2vector_converter(this->string_thresholds_initial_);
     this->thresholds_soft_  = this->string2vector_converter(this->string_thresholds_soft_);
     this->thresholds_hard_  = this->string2vector_converter(this->string_thresholds_hard_);
-    this->thresholds_final_ = this->string2vector_converter(this->string_thresholds_final_);
+    //this->thresholds_final_ = this->string2vector_converter(this->string_thresholds_final_);
 
     ros::param::param("~bars_v", this->dbar_increment_, 1.0f/32.0f);
     ros::param::param("~bars_d", this->dbar_decrement_, 1.0f/32.0f/4.0f);
@@ -85,6 +95,16 @@ void AllController::run(void) {
 		r.sleep();
 	}
 
+}
+
+std::vector<double> AllController::convert_tresholds_(double offset, double width) {
+  // TODO: check this function
+  std::vector<double> v;
+  if (offset >= 0.5)
+    v = {offset + (width/2.0), 1.0 - (offset - (width/2.0))};
+  else
+    v = {1.0 - (offset - (width/2.0)), offset + (width/2.0)};
+  return v;
 }
 
 std::vector<double> AllController::string2vector_converter(std::string msg){
@@ -141,12 +161,12 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
 		input = msg.softpredict.data.at(refclassid);
 
     if (input < this->thresholds_hard_[RIGHT] && input > (1 - this->thresholds_hard_[LEFT])) { 
-		ctrl = this->input2control(input);
-        if (ctrl < 0.0f)
-        	ctrl = 0.0f;
-		this->ctrl_.linear.x  = this->linear_strength_ * ctrl;
-		this->ctrl_.angular.z = this->angular_strength_ * input2angular(input);
-		this->has_new_ctrl_ = true;
+		  ctrl = this->input2control(input);
+      if (ctrl < 0.0f)
+      	ctrl = 0.0f;
+		  this->ctrl_.linear.x  = this->linear_strength_ * ctrl;
+		  this->ctrl_.angular.z = this->angular_strength_ * input2angular(input);
+		  this->has_new_ctrl_ = true;
     } else if (input > this->thresholds_hard_[RIGHT]) {
       this->increase_bar(RIGHT);
    		this->ctrl_.linear.x  = 0.0f;
@@ -158,7 +178,6 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
       this->ctrl_.angular.z = 0.0f; 
       this->has_new_ctrl_ = true;
     }
-
     this->decrease_bars();	
   }
 
@@ -266,12 +285,17 @@ void AllController::request_reset_integration(){
 void AllController::on_request_reconfigure_f(cybathlon_feedback &config, uint32_t level) {
 	thresholds_soft_  = {config.thsl, config.thsr};
 	thresholds_hard_  = {config.thhl, config.thhr};
-	thresholds_final_ = {config.thfl, config.thfr};
+	// thresholds_final_ = {config.thfl, config.thfr};
 }
 
 void AllController::on_request_reconfigure_b(cybathlon_feedback_bars &config, uint32_t level) {
   ROS_INFO("New bars velocity: %f", config.bars_v);
   this->dbar_increment_ = config.bars_v;
+}
+
+void AllController::on_request_reconfigure_r(cybathlon_feedback_range &config, uint32_t level) {
+  this->thresholds_initial_ = this->convert_tresholds_(this->offset_i_, config.width);
+  ROS_INFO("New thresholds: %f - %f", this->thresholds_initial_[0], this->thresholds_initial_[1]);
 }
 
 }
