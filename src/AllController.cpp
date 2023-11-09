@@ -18,6 +18,12 @@ AllController::AllController(void) : NavigationController(){
   this->recfg_callback_type_f_ = boost::bind(&AllController::on_request_reconfigure_f, this, _1, _2);
   recfg_srv_f_->setCallback(this->recfg_callback_type_f_);
 
+  // Bind dynamic reconfigure callback for the bars
+  ros::NodeHandle node_handle_b("~cybathlon_feedback_bars");
+  dyncfg_feedback_bars *recfg_srv_b_ = new dyncfg_feedback_bars(node_handle_b);
+  this->recfg_callback_type_b_ = boost::bind(&AllController::on_request_reconfigure_b, this, _1, _2);
+  recfg_srv_b_->setCallback(this->recfg_callback_type_b_);
+
   this->reset_integrator_service = this->nh_.serviceClient<std_srvs::Empty>("/integrator/reset");
 }
 
@@ -36,12 +42,15 @@ bool AllController::configure(void) {
     ros::param::param("~threshold_final", this->string_thresholds_final_, tstf);
     ros::param::param("~threshold_initial", this->string_thresholds_initial_, tsti);
 
-	ros::param::param("~reset_on_hit", this->reset_on_hit, this->reset_on_hit);
+	  ros::param::param("~reset_on_hit", this->reset_on_hit, this->reset_on_hit);
 
     this->thresholds_initial_ = this->string2vector_converter(this->string_thresholds_initial_);
     this->thresholds_soft_  = this->string2vector_converter(this->string_thresholds_soft_);
     this->thresholds_hard_  = this->string2vector_converter(this->string_thresholds_hard_);
     this->thresholds_final_ = this->string2vector_converter(this->string_thresholds_final_);
+
+    ros::param::param("~bars_v", this->dbar_increment_, 1.0f/32.0f);
+    ros::param::param("~bars_d", this->dbar_decrement_, 1.0f/32.0f/4.0f);
   } else
     return false;
   return true;
@@ -213,8 +222,8 @@ void AllController::set_discrete_cmd(int button_id) {
 }
 
 void AllController::decrease_bars(){
-	this->bar1_ -= this->dbar_increment_ / 4.0; // TODO: parametrize
-  this->bar2_ -= this->dbar_increment_ / 4.0;
+	this->bar1_ -= this->dbar_decrement_; 
+  this->bar2_ -= this->dbar_decrement_;
 
   if (	this->bar1_ < 0 )
 			this->bar1_ = 0;
@@ -260,6 +269,9 @@ void AllController::on_request_reconfigure_f(cybathlon_feedback &config, uint32_
 	thresholds_final_ = {config.thfl, config.thfr};
 }
 
-
+void AllController::on_request_reconfigure_b(cybathlon_feedback_bars &config, uint32_t level) {
+  ROS_INFO("New bars velocity: %f", config.bars_v);
+  this->dbar_increment_ = config.bars_v;
+}
 
 }

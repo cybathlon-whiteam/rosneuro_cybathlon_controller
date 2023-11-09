@@ -10,6 +10,7 @@
 #include "rosneuro_cybathlon_controller/NavigationController.h"
 
 #include "rosneuro_cybathlon_controller/AllControllerConfig.h"
+#include "rosneuro_cybathlon_controller/BarsConfig.h"
 
 namespace rosneuro {
 
@@ -17,6 +18,9 @@ constexpr int DEFAULT_NUM_BUTTONS = 4;
 
 using cybathlon_feedback   = rosneuro_cybathlon_controller::AllControllerConfig;
 using dyncfg_feedback_cy   = dynamic_reconfigure::Server<cybathlon_feedback>;
+
+using cybathlon_feedback_bars = rosneuro_cybathlon_controller::BarsConfig;
+using dyncfg_feedback_bars    = dynamic_reconfigure::Server<cybathlon_feedback_bars>;
 
 class AllController : public NavigationController {
     public:
@@ -32,7 +36,7 @@ class AllController : public NavigationController {
         float input2angular(float input);
 
         void on_request_reconfigure_f(cybathlon_feedback &config, uint32_t level);  
-
+        void on_request_reconfigure_b(cybathlon_feedback_bars &config, uint32_t level);
 
     private:
         std_msgs::Float32MultiArray status_bar_;
@@ -57,7 +61,8 @@ class AllController : public NavigationController {
         std::vector<double> thresholds_soft_, thresholds_hard_, thresholds_final_, thresholds_initial_;
         std::string string_thresholds_soft_, string_thresholds_hard_, string_thresholds_final_, string_thresholds_initial_;
 
-        float dbar_increment_ = 1.0 / 32.0;
+        float dbar_increment_ ;
+        float dbar_decrement_ ;
 
         bool has_new_dbar_   = false;
         bool has_new_button_ = false;
@@ -66,8 +71,8 @@ class AllController : public NavigationController {
 
         int digital_key_ = -1;
 
-        //dyncfg_feedback_cy               recfg_srv_f_;
-		dyncfg_feedback_cy::CallbackType recfg_callback_type_f_;
+		    dyncfg_feedback_cy::CallbackType recfg_callback_type_f_;
+        dyncfg_feedback_bars::CallbackType recfg_callback_type_b_;
 
         ros::ServiceClient reset_integrator_service;
 
