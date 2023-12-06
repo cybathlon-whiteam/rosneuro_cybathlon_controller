@@ -69,6 +69,7 @@ class AllController : public NavigationController {
         std::string string_thresholds_soft_, string_thresholds_hard_, string_thresholds_final_, string_thresholds_initial_;
 
         double offset_i_;
+        double width_i_;
 
         float dbar_increment_ ;
         float dbar_decrement_ ;
