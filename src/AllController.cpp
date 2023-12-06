@@ -25,7 +25,7 @@ AllController::AllController(void) : NavigationController(){
   recfg_srv_b_->setCallback(this->recfg_callback_type_b_);
 
   // Bind dynamic reconfigure callback for the initial threshold
-  ros::NodeHandle node_handle_i("~initial_with");
+  ros::NodeHandle node_handle_i("~mid_value");
   dyncfg_feedback_range *recfg_srv_r_ = new dyncfg_feedback_range(node_handle_i);
   this->recfg_callback_type_r_ = boost::bind(&AllController::on_request_reconfigure_r, this, _1, _2);
   recfg_srv_r_->setCallback(this->recfg_callback_type_r_);
@@ -42,15 +42,14 @@ bool AllController::configure(void) {
     std::string tsth = "0.9, 0.9";
     //std::string tstf = "1.0, 1.0";
     //std::string tsti = "0.5, 0.05";
-    double width_i;
 
     ros::param::param("~threshold_soft",  this->string_thresholds_soft_,  tsts);
     ros::param::param("~threshold_hard",  this->string_thresholds_hard_,  tsth);
     //ros::param::param("~threshold_final", this->string_thresholds_final_, tstf);
     ros::param::param("~offset_i", this->offset_i_, 0.5d);
-    ros::param::param("~width_i",  width_i,  0.01d);
+    ros::param::param("~width_i",  this->width_i_,  0.01d);
 
-    this->thresholds_initial_ = this->convert_tresholds_(this->offset_i_, width_i);
+    this->thresholds_initial_ = this->convert_tresholds_(this->offset_i_, this->width_i_);
 
 	  ros::param::param("~reset_on_hit", this->reset_on_hit, this->reset_on_hit);
 
@@ -160,25 +159,31 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
 	} else {
 		input = msg.softpredict.data.at(refclassid);
 
-    if (input < this->thresholds_hard_[RIGHT] && input > (1 - this->thresholds_hard_[LEFT])) { 
-		  ctrl = this->input2control(input);
-      if (ctrl < 0.0f)
-      	ctrl = 0.0f;
-		  this->ctrl_.linear.x  = this->linear_strength_ * ctrl;
-		  this->ctrl_.angular.z = this->angular_strength_ * input2angular(input);
-		  this->has_new_ctrl_ = true;
-    } else if (input > this->thresholds_hard_[RIGHT]) {
-      this->increase_bar(RIGHT);
-   		this->ctrl_.linear.x  = 0.0f;
-      this->ctrl_.angular.z = 0.0f;
-      this->has_new_ctrl_ = true;
-    } else if (input < (1 - this->thresholds_hard_[LEFT])) {
-      this->increase_bar(LEFT);
+    if(!this->has_new_eog_){
+      if (input < this->thresholds_hard_[RIGHT] && input > (1 - this->thresholds_hard_[LEFT])) { 
+		    ctrl = this->input2control(input);
+        if (ctrl < 0.0f)
+        	ctrl = 0.0f;
+		    this->ctrl_.linear.x  = this->linear_strength_ * ctrl;
+		    this->ctrl_.angular.z = this->angular_strength_ * input2angular(input);
+		    this->has_new_ctrl_ = true;
+      } else if (input > this->thresholds_hard_[RIGHT]) {
+        this->increase_bar(RIGHT);
+   	  	this->ctrl_.linear.x  = 0.0f;
+        this->ctrl_.angular.z = 0.0f;
+        this->has_new_ctrl_ = true;
+      } else if (input < (1 - this->thresholds_hard_[LEFT])) {
+        this->increase_bar(LEFT);
+        this->ctrl_.linear.x  = 0.0f;
+        this->ctrl_.angular.z = 0.0f; 
+        this->has_new_ctrl_ = true;
+      }
+      this->decrease_bars();	
+    }else{
       this->ctrl_.linear.x  = 0.0f;
       this->ctrl_.angular.z = 0.0f; 
       this->has_new_ctrl_ = true;
     }
-    this->decrease_bars();	
   }
 
 }
@@ -289,13 +294,24 @@ void AllController::on_request_reconfigure_f(cybathlon_feedback &config, uint32_
 }
 
 void AllController::on_request_reconfigure_b(cybathlon_feedback_bars &config, uint32_t level) {
-  ROS_INFO("New bars velocity: %f", config.bars_v);
+  ROS_WARN("Update bars velocity: %f", config.bars_v);
   this->dbar_increment_ = config.bars_v;
 }
 
 void AllController::on_request_reconfigure_r(cybathlon_feedback_range &config, uint32_t level) {
-  this->thresholds_initial_ = this->convert_tresholds_(this->offset_i_, config.width);
-  ROS_INFO("New thresholds: %f - %f", this->thresholds_initial_[0], this->thresholds_initial_[1]);
+  
+  if(NavigationController::update_if_different(config.offset, this->offset_i_)){
+    this->thresholds_initial_ = this->convert_tresholds_(this->offset_i_, config.width);
+    ROS_WARN("Update thresholds: %f - %f", this->thresholds_initial_[0], this->thresholds_initial_[1]);
+    ROS_WARN("Update offset_i to %f", this->offset_i_);
+  }
+
+  if(NavigationController::update_if_different(config.width, this->width_i_)){
+    this->thresholds_initial_ = this->convert_tresholds_(this->offset_i_, config.width);
+    ROS_WARN("Update thresholds: %f - %f", this->thresholds_initial_[0], this->thresholds_initial_[1]);
+    ROS_WARN("Update width_i to %f", this->offset_i_);
+  }
+  
 }
 
 }

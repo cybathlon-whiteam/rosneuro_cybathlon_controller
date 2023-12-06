@@ -29,10 +29,11 @@ class NavigationController {
 		virtual void on_received_neuroprediction(const rosneuro_msgs::NeuroOutput& msg);
 		void on_received_neuroevent(const rosneuro_msgs::NeuroEvent& msg);
 		void on_request_reconfigure(rosneuro_config_cybathlon_controller &config, uint32_t level);
-
+        bool update_if_different(const double& first, double& second, double epsilon = 0.00001);
     virtual float input2control(float input);
 
     bool has_new_ctrl_;
+	bool has_new_eog_;
     float angular_strength_;
     float linear_strength_;
     bool is_discrete_;
@@ -54,7 +55,7 @@ class NavigationController {
 		ros::Subscriber subprob_;
 		ros::Subscriber subevt_;
 		
-    //std::vector<float> thresholds_;
+        //std::vector<float> thresholds_;
 
 		const int cmdmask_ = 6000;
 
