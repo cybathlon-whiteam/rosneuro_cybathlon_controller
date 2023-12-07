@@ -33,7 +33,7 @@ class NavigationController {
     virtual float input2control(float input);
 
     bool has_new_ctrl_;
-	bool has_new_eog_;
+    bool has_new_eog_;
     float angular_strength_;
     float linear_strength_;
     bool is_discrete_;

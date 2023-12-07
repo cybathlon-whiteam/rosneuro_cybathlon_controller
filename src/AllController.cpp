@@ -160,6 +160,7 @@ void AllController::on_received_neuroprediction(const rosneuro_msgs::NeuroOutput
 		input = msg.softpredict.data.at(refclassid);
 
     if(!this->has_new_eog_){
+
       if (input < this->thresholds_hard_[RIGHT] && input > (1 - this->thresholds_hard_[LEFT])) { 
 		    ctrl = this->input2control(input);
         if (ctrl < 0.0f)
