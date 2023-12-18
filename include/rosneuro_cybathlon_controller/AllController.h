@@ -81,7 +81,7 @@ class AllController : public NavigationController {
 
         int digital_key_ = -1;
 
-		    dyncfg_feedback_cy::CallbackType recfg_callback_type_f_;
+		dyncfg_feedback_cy::CallbackType recfg_callback_type_f_;
         dyncfg_feedback_bars::CallbackType recfg_callback_type_b_;
         dyncfg_feedback_range::CallbackType recfg_callback_type_r_;
 

@@ -138,6 +138,12 @@ void NavigationController::on_received_neuroevent(const rosneuro_msgs::NeuroEven
 	int refclassid;
 	float input, ctrl;
 
+	if(event == 1024){
+        this->has_new_eog_ = true;
+	}else if(event == 1024+0x8000){
+		this->has_new_eog_ = false;
+	}
+
 	if(this->is_discrete_ == false)
 		return;
 
@@ -165,11 +171,7 @@ void NavigationController::on_received_neuroevent(const rosneuro_msgs::NeuroEven
 	this->ctrl_.angular.z = this->angular_strength_ * ctrl;
 	this->has_new_ctrl_ = true;
 
-	if(event == 1024){
-        this->has_new_eog_ = true;
-	}else if(event == 1024+0x8000){
-		this->has_new_eog_ = false;
-	}
+	
 }
 
 float NavigationController::input2control(float input) {

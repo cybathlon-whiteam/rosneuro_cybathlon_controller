@@ -25,6 +25,9 @@ class NavigationController {
 		virtual bool configure(void);
 		virtual void run(void);
 
+
+	bool has_new_eog_ = false;
+
 	protected:
 		virtual void on_received_neuroprediction(const rosneuro_msgs::NeuroOutput& msg);
 		void on_received_neuroevent(const rosneuro_msgs::NeuroEvent& msg);
@@ -33,7 +36,6 @@ class NavigationController {
     virtual float input2control(float input);
 
     bool has_new_ctrl_;
-	bool has_new_eog_;
     float angular_strength_;
     float linear_strength_;
     bool is_discrete_;

@@ -82,7 +82,7 @@ void AllController::run(void) {
       this->has_new_dbar_ = false;
     }
 
-    if(this->has_new_button_ == true) {
+    if(this->has_new_button_) {
       this->set_discrete_cmd(this->digital_key_); 
       this->pub_discrete_cmd_.publish(this->discrete_cmd_);
       this->digital_key_ = -1;
@@ -264,17 +264,21 @@ void AllController::increase_bar(int index){
 		if ( this->bar1_ >= 1.0 ) {
 			this->bar1_ = 0.0;
 			this->digital_key_ = index;
-			this->has_new_button_ = true;
-			request_reset_integration(); // TODO: Set a discrete flag if to do or not
+      if(!this->has_new_eog_){
+			  this->has_new_button_ = true;
+        request_reset_integration(); // TODO: Set a discrete flag if to do or not
+      }
 		}
 	} else {
 		this->bar2_ += this->dbar_increment_;
 		
 		if ( this->bar2_ >= 1.0 ) {
 			this->bar2_ = 0.0;
-    		this->digital_key_ = index;
-			this->has_new_button_ = true;
-			request_reset_integration(); // TODO: the same as above
+    	this->digital_key_ = index;
+      if(!this->has_new_eog_){
+			  this->has_new_button_ = true;
+        request_reset_integration(); // TODO: the same as above
+      }		
 		}
 	}
   this->has_new_dbar_ = true;
